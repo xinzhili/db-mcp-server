@@ -5,14 +5,9 @@
       "type": "mysql",
       "host": "localhost",
       "port": 3306,
+      "name": "revisto",
       "user": "iamrevisto",
-      "password": "password",
-      "name": "revisto"
-    },
-    {
-      "id": "cashflow_sqlite",
-      "type": "sqlite",
-      "path": "./cashflow.db"
+      "password": "password"
     }
   ]
 } 
