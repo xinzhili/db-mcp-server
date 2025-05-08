@@ -12,13 +12,13 @@
 <h3>A powerful multi-database server implementing the Model Context Protocol (MCP) to provide AI assistants with structured access to databases.</h3>
 
 <div class="toc">
-  <a href="#what-is-db-mcp-server">Overview</a> •
+  <a href="#overview">Overview</a> •
   <a href="#core-concepts">Core Concepts</a> •
   <a href="#features">Features</a> •
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#running-the-server">Running</a> •
+  <a href="#supported-databases">Supported Databases</a> •
+  <a href="#deployment-options">Deployment Options</a> •
   <a href="#configuration">Configuration</a> •
-  <a href="#available-tools">Tools</a> •
+  <a href="#available-tools">Available Tools</a> •
   <a href="#examples">Examples</a> •
   <a href="#troubleshooting">Troubleshooting</a> •
   <a href="#contributing">Contributing</a>
@@ -26,7 +26,7 @@
 
 </div>
 
-## What is DB MCP Server?
+## Overview
 
 The DB MCP Server provides a standardized way for AI models to interact with multiple databases simultaneously. Built on the [FreePeak/cortex](https://github.com/FreePeak/cortex) framework, it enables AI assistants to execute SQL queries, manage transactions, explore schemas, and analyze performance across different database systems through a unified interface.
 
@@ -93,7 +93,7 @@ The server follows Clean Architecture principles with these layers:
 - **Unified Interface**: Consistent interaction patterns across different database types
 - **Connection Management**: Simple configuration for multiple database connections
 
-## Currently Supported Databases
+## Supported Databases
 
 | Database   | Status                    | Features                                                     |
 | ---------- | ------------------------- | ------------------------------------------------------------ |
@@ -101,15 +101,17 @@ The server follows Clean Architecture principles with these layers:
 | PostgreSQL | ✅ Full Support (v9.6-17) | Queries, Transactions, Schema Analysis, Performance Insights |
 | TimescaleDB| ✅ Full Support           | Hypertables, Time-Series Queries, Continuous Aggregates, Compression, Retention Policies |
 
-## Quick Start
+## Deployment Options
 
-### Using Docker
+The DB MCP Server can be deployed in multiple ways to suit different environments and integration needs:
+
+### Docker Deployment
 
 ```bash
 # Pull the latest image
 docker pull freepeak/db-mcp-server:latest
 
-# Run with environment variables
+# Run with mounted config file
 docker run -p 9092:9092 \
   -v $(pwd)/config.json:/app/my-config.json \
   -e TRANSPORT_MODE=sse \
@@ -117,34 +119,16 @@ docker run -p 9092:9092 \
   freepeak/db-mcp-server
 ```
 
-> **Note**: We mount to `/app/my-config.json` because the container already has a file at `/app/config.json`.
+> **Note**: Mount to `/app/my-config.json` as the container has a default file at `/app/config.json`.
 
-### From Source
-
-```bash
-# Clone the repository
-git clone https://github.com/FreePeak/db-mcp-server.git
-cd db-mcp-server
-
-# Build the server
-make build
-
-# Run the server in SSE mode
-./bin/server -t sse -c config.json
-```
-
-## Running the Server
-
-The server supports multiple transport modes:
-
-### STDIO Mode (for IDE integration)
+### STDIO Mode (IDE Integration)
 
 ```bash
 # Run the server in STDIO mode
-./server -t stdio -c config.json
+./bin/server -t stdio -c config.json
 ```
 
-For Cursor integration, add this to your `.cursor/mcp.json`:
+For Cursor IDE integration, add to `.cursor/mcp.json`:
 
 ```json
 {
@@ -160,18 +144,32 @@ For Cursor integration, add this to your `.cursor/mcp.json`:
 ### SSE Mode (Server-Sent Events)
 
 ```bash
-# Run with default host (localhost) and port (9092)
-./server -t sse -c config.json
+# Default configuration (localhost:9092)
+./bin/server -t sse -c config.json
 
-# Specify a custom host and port
-./server -t sse -host 0.0.0.0 -port 8080 -c config.json
+# Custom host and port
+./bin/server -t sse -host 0.0.0.0 -port 8080 -c config.json
 ```
 
-Connect your client to `http://localhost:9092/sse` for the event stream.
+Client connection endpoint: `http://localhost:9092/sse`
+
+### Source Code Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/FreePeak/db-mcp-server.git
+cd db-mcp-server
+
+# Build the server
+make build
+
+# Run the server
+./bin/server -t sse -c config.json
+```
 
 ## Configuration
 
-### Database Configuration
+### Database Configuration File
 
 Create a `config.json` file with your database connections:
 
@@ -208,19 +206,18 @@ Create a `config.json` file with your database connections:
 ### Command-Line Options
 
 ```bash
-make build
-# Basic options
+# Basic syntax
 ./bin/server -t <transport> -c <config-file>
 
-# For SSE transport, additional options:
+# SSE transport options
 ./bin/server -t sse -host <hostname> -port <port> -c <config-file>
 
-# Direct database configuration:
+# Inline database configuration
 ./bin/server -t stdio -db-config '{"connections":[...]}'
 
-# Environment variable configuration:
+# Environment variable configuration
 export DB_CONFIG='{"connections":[...]}'
-./server -t stdio
+./bin/server -t stdio
 ```
 
 ## Available Tools
@@ -268,4 +265,71 @@ For detailed documentation on TimescaleDB tools, see [TIMESCALEDB_TOOLS.md](docs
 
 ### Querying Multiple Databases
 
+```sql
+-- Query the first database
+query_mysql1("SELECT * FROM users LIMIT 10")
+
+-- Query the second database in the same context
+query_postgres1("SELECT * FROM products WHERE price > 100")
 ```
+
+### Managing Transactions
+
+```sql
+-- Start a transaction
+transaction_mysql1("BEGIN")
+
+-- Execute statements within the transaction
+execute_mysql1("INSERT INTO orders (customer_id, product_id) VALUES (1, 2)")
+execute_mysql1("UPDATE inventory SET stock = stock - 1 WHERE product_id = 2")
+
+-- Commit or rollback
+transaction_mysql1("COMMIT")
+-- OR
+transaction_mysql1("ROLLBACK")
+```
+
+### Exploring Database Schema
+
+```sql
+-- Get all tables in the database
+schema_mysql1("tables")
+
+-- Get columns for a specific table
+schema_mysql1("columns", "users")
+
+-- Get constraints
+schema_mysql1("constraints", "orders")
+```
+
+## Troubleshooting
+
+### Common Issues
+
+- **Connection Failures**: Verify network connectivity and database credentials
+- **Permission Errors**: Ensure the database user has appropriate permissions
+- **Timeout Issues**: Check the `query_timeout` setting in your configuration
+
+### Logs
+
+Enable verbose logging for troubleshooting:
+
+```bash
+./bin/server -t sse -c config.json -v
+```
+
+## Contributing
+
+We welcome contributions to the DB MCP Server project! To contribute:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+Please see our [CONTRIBUTING.md](docs/CONTRIBUTING.md) file for detailed guidelines.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
